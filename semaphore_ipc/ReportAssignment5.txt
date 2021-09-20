@@ -1,0 +1,100 @@
+Inter process communiction method:Shared Memory
+Shared Memory is an efficeint means of passing data between programs. One program will create a memory portion which other 
+processes (if permitted) can access.Shared memory is the fastest form of IPC available. Once the memory is mapped into
+the address space of the processes that are  sharing the memory region, no kernel involvement occurs in passing data between 
+the processes. 
+Advantages: The problem with other forms of IPC — pipes, FIFOs, and message queues — is that
+for two processes to exchange information, the information has to go through the kernel.Shared memory provides a way around 
+this by letting two or more processes share a region of memory.What we mean by ‘‘no kernel involvement’’ is that the processes 
+do not execute any system calls into the kernel to pass the data. Obviously, the kernel must establish the memory mappings 
+that allow the processes to share  the memory,  and then manage this memory over time (handle page faults, and the like)
+What is normally required,however, is  some form of synchronization between the processes that are  storing and
+fetching information to and from the shared memory region. When write access is allowed for more than one process, 
+an outside protocol or mechanism such as a semaphore can be used to prevent inconsistencies and collisions.
+
+shmget - allocates a System V shared memory segment
+int shmget(key_t key, size_t size, int shmflg);
+shmget()  returns  the identifier of the System V shared memory segment associated with the value of the argument key.  
+A new shared memory segment, with  size  equal  to  the value  of  size  rounded up to a multiple of PAGE_SIZE, is created.
+
+void *shmat(int shmid, const void *shmaddr, int shmflg);
+shmat()  attaches the System V shared memory segment identified by shmid to the address space of the calling process.
+The attaching address is specified by shmaddr,i f  shmaddr  is NULL, the system chooses a suitable (unused) address at 
+which to attach the segment.
+int shmdt(const void *shmaddr);
+shmdt() detaches the shared memory segment located at the address specified by shmaddr from the address space of the calling process.
+
+
+SEMAPHORE:
+sem_post - unlock a semaphore
+int sem_post(sem_t *sem);
+sem_post()  increments  (unlocks)  the semaphore pointed to by sem.  If the semaphore's value consequently becomes greater 
+than zero, then another process or thread blocked in a sem_wait() call will be woken up and proceed to lock the semaphore.
+
+int sem_wait(sem_t *sem);
+It decrements (locks)  the  semaphore  pointed to by sem.  If the semaphore's value is greater than zero, then the 
+decrement  proceeds,  and  the  function  returns, immediately.  If the semaphore currently has the value zero, then the call 
+blocks until either it becomes possible to perform the decrement (i.e., the  semaphore  value  rises above zero), or a 
+signal handler interrupts the call.
+
+sem_init - initialize an unnamed semaphore
+int sem_init(sem_t *sem, int pshared, unsigned int value);
+sem_init()  initializes  the  unnamed  semaphore at the address pointed to by sem.  The value argument specifies the initial 
+value for the semaphore. The pshared argument indicates whether this semaphore  is  to  be  shared  between  the
+threads of a process, or between processes.If  pshared  is  nonzero, then the semaphore is shared between processes, and should be
+located in a region of shared memory 
+
+  
+B))
+Master shares information using shared variable. For each task(boiler,mixer,..) we create two queues one for finished jobs and other
+for new jobs that needs to be done.
+int *gboilerq,*gmixerq,*gwrapq,*gfreezeq; // for task queues that will be filled by Master
+int *gfboilerq,*gfmixerq,*gfwrapq,*gffreezeq; // finshed task queues that will be updated by Slaves
+int *ghtqpointer,*ghtfqpointer;// for allocating head tail for all queues
+
+C))Critical  section:
+IN SLAVE:
+sem_wait(tsemaphore);
+						 jobid=(ghtfqpointer[task*2]==-1?-1111:tempq[3*ghtfqpointer[task*2]]);
+						 tempt=tempq[3*ghtfqpointer[task*2]+1]; //tasktype 
+		
+							int ntask=jobs[jobid].jobary[i+3]; //fetch the new task
+							int *ntempq1=(ntask==0?gboilerq:ntask==1?gmixerq:ntask==2?gwrapq:ntask==3?gfreezeq:-1);
+							// tempq is assigned the address of queue; 
+							ntempq1[2*(ghtqpointer[ntask*2+1]+1)]=jobid;
+							ntempq1[2*(ghtqpointer[ntask*2+1]+1)+1]=jobs[jobid].jobary[i+4];	// tasktype	
+							settaskcounts(task,tempq[3*ghtfqpointer[task*2]+2]	,tempt);								
+							printf("\n%s %s %s processid %d %d waiting ",jobs[jobid].jobname,task==0?"Boil":task==1?"Mix":task==2?
+							"Wrap":task==3?"freeze":"Incorrect task",taskinfo[task].ttype[tempq[3*ghtfqpointer[task*2]+1]].cttype,
+							tempq[3*ghtfqpointer[task*2]+2],waitingtask(i,jobid));
+							fflush(stdout);
+							if(ghtqpointer[2*ntask]==-1)ghtqpointer[2*ntask]=0;// set qu for new taskt
+							++ghtqpointer[2*ntask+1];//tail is increased for the new taskt
+		sem_post(tsemaphore);					
+
+IN MASTER:
+
+		sem_wait(tsemaphore);
+		if(ghtqpointer[task*2]<=ghtqpointer[task*2+1] && ghtqpointer[task*2]!=-1) 		
+		{
+			jobid=(ghtqpointer[task*2] == -1 ?-1:tempq[2*ghtqpointer[task*2]]);
+			temptype=(ghtqpointer[task*2] == -1?-1:tempq[2*ghtqpointer[task*2]+1]);		
+			++ghtqpointer[task*2]; 
+			// once finished, update the finished queues
+			int *tempq1 = (task==0?gfboilerq:task==1?gfmixerq:task==2?gfwrapq:task==3?gffreezeq:-1);
+			if(ghtfqpointer[task*2]==-1)ghtfqpointer[task*2]=0;
+			ghtfqpointer[task*2+1]++;
+			tempq1[3*(ghtfqpointer[task*2+1])]=jobid;//
+			tempq1[3*(ghtfqpointer[task*2+1])+1]=temptype;
+			tempq1[3*(ghtfqpointer[task*2+1])+2]=getpid();//store the processid who has the work			
+			status=1;			
+			fflush(stdout);
+		}
+			sem_post(tsemaphore);
+
+D))By using semaphore
+	sem_post(tsemaphore);
+
+	sem_wait(tsemaphore);
+	
+	
