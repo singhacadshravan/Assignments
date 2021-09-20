@@ -1,3 +1,5 @@
+Open the pdf file to see the assignment
+
 For part 1 file name is assign1a.py
 For part 2 file name is assign1b.py
 For part 3 file name is assign1c.py
