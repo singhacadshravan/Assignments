@@ -1,2 +1,0 @@
-gcc -pthread   assign2ser.c -o server
-gcc -pthread   assign2cl.c -o client
