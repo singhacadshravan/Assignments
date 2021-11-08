@@ -1,0 +1,44 @@
+Test ID,Scenarios,Steps,Passed,Remarks
+1,client is able to connect to server,./client localhost 3000,yes,
+2,"client is able to connect to server(localhost)
+If localhost is not provided explicitly",./client,yes,
+3,"client is able to connect to server at port 
+2000 if port is not provided explicitly",./client,yes,
+4,"Show message of error(""Connection limit 
+exceeded!! Only 5 clients can be connected."")
+ If more than 5 clients try to connect.","Open more than 5 clients in 
+Terminals
+./client
+",yes,
+5,"Show message of error(""No sender is specified
+.Sender name/id should be before "") if client 
+Sends message to no receiver. Message format 
+Is clientx:hello","./client
+Hello there",yes,
+6,"Show message of error(""No such receiver is online.
+Please check the list of online clients!) if sender 
+tries to message a client who doesn't exist in the 
+System","./client
+Invalidclient:hello",yes,
+7,"When client first connect to the server, he gets a 
+Welcome message (""Welcome clientxx:%s xxxxx”)","./client
+",yes,
+8,"when client writes “details” server sends the 
+records of all clients present in the system.
+""online clients:
+Uniquename:clientxx  Uniqueid:xxxxx”
+Uniquename:clientxx  Uniqueid:xxxxx","./client
+Details",yes,
+9,"when some client disconnects from server then all 
+the remaining client gets the message (""client 
+Uniquename:clientxx Uniqueid:xxxxx is disconnected)","./client
+ctrl+c",yes,
+10,"Client send message to some other client in correct 
+format(clientxx:text) then other Client should get the
+ Message","./client
+Client01:hello
+
+./client
+Receiving:
+Client0:hello",yes,
+,,,yes,
